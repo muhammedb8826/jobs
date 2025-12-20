@@ -15,12 +15,14 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { getJobs, type Job } from "../api/jobs.api";
+import { getUserApplications, createApplication, type Application } from "../../applications/api/applications.api";
 import { format } from "date-fns";
 import Link from "next/link";
-import Image from "next/image";
+import { toast } from "sonner";
 
 export function JobsSearchPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [location, setLocation] = useState("");
@@ -28,20 +30,30 @@ export function JobsSearchPage() {
   const [minSalary, setMinSalary] = useState("");
   const [maxSalary, setMaxSalary] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [applyingJobId, setApplyingJobId] = useState<number | null>(null);
 
   useEffect(() => {
-    async function fetchJobs() {
+    async function fetchData() {
       try {
         const jwt = localStorage.getItem("jwt");
-        const fetchedJobs = await getJobs(jwt || undefined);
+        if (!jwt) {
+          setLoading(false);
+          return;
+        }
+
+        const [fetchedJobs, fetchedApplications] = await Promise.all([
+          getJobs(jwt),
+          getUserApplications(jwt),
+        ]);
         setJobs(fetchedJobs);
+        setApplications(fetchedApplications);
       } catch (error) {
-        console.error("Failed to fetch jobs:", error);
+        console.error("Failed to fetch data:", error);
       } finally {
         setLoading(false);
       }
     }
-    fetchJobs();
+    fetchData();
   }, []);
 
   const handleJobTypeToggle = (jobType: string) => {
@@ -244,9 +256,38 @@ export function JobsSearchPage() {
                     : "flex flex-col gap-4"
                 }
               >
-                {filteredJobs.map((job) => (
-                  <JobCard key={job.id} job={job} />
-                ))}
+                {filteredJobs.map((job) => {
+                  const application = applications.find((app) => app.job.id === job.id);
+                  return (
+                    <JobCard
+                      key={job.id}
+                      job={job}
+                      application={application}
+                      onApply={async (jobId) => {
+                        const jwt = localStorage.getItem("jwt");
+                        if (!jwt) {
+                          toast.error("Please login to apply for jobs");
+                          return;
+                        }
+
+                        setApplyingJobId(jobId);
+                        try {
+                          const newApplication = await createApplication(jobId, jwt);
+                          setApplications((prev) => [...prev, newApplication]);
+                          toast.success("Application submitted successfully!");
+                        } catch (error) {
+                          console.error("Failed to create application:", error);
+                          toast.error(
+                            error instanceof Error ? error.message : "Failed to submit application"
+                          );
+                        } finally {
+                          setApplyingJobId(null);
+                        }
+                      }}
+                      isApplying={applyingJobId === job.id}
+                    />
+                  );
+                })}
               </div>
             )}
           </div>
@@ -256,7 +297,17 @@ export function JobsSearchPage() {
   );
 }
 
-function JobCard({ job }: { job: Job }) {
+function JobCard({
+  job,
+  application,
+  onApply,
+  isApplying,
+}: {
+  job: Job;
+  application?: Application;
+  onApply: (jobId: number) => Promise<void>;
+  isApplying: boolean;
+}) {
   const formattedDate = job.publishedAt
     ? format(new Date(job.publishedAt), "do MMM yyyy")
     : format(new Date(job.createdAt), "do MMM yyyy");
@@ -320,9 +371,25 @@ function JobCard({ job }: { job: Job }) {
               <span>{formattedDate}</span>
               <span>{salaryDisplay}</span>
             </div>
-            <Button variant="outline" size="sm" className="bg-gray-100">
-              Applied
-            </Button>
+            {application ? (
+              <Button variant="outline" size="sm" className="bg-gray-100" disabled>
+                {application.applicationStatus}
+              </Button>
+            ) : (
+              <Button
+                variant="default"
+                size="sm"
+                className="bg-primary hover:bg-primary/90"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onApply(job.id);
+                }}
+                disabled={isApplying}
+              >
+                {isApplying ? "Applying..." : "Apply"}
+              </Button>
+            )}
           </div>
         </div>
       </div>

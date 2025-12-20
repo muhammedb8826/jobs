@@ -1,10 +1,13 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { ArrowLeft, MapPin, DollarSign, Users, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import type { Job } from "../api/jobs.api";
+import { getUserApplications, createApplication, type Application } from "../../applications/api/applications.api";
 import { format } from "date-fns";
 
 type JobDetailsProps = {
@@ -30,7 +33,31 @@ function richTextToPlainText(
 
 export function JobDetails({ job }: JobDetailsProps) {
   const router = useRouter();
+  const [application, setApplication] = useState<Application | null>(null);
+  const [isApplying, setIsApplying] = useState(false);
+  const [loading, setLoading] = useState(true);
   const categoryName = job.category?.name || "Uncategorized";
+
+  useEffect(() => {
+    async function fetchApplication() {
+      try {
+        const jwt = localStorage.getItem("jwt");
+        if (!jwt) {
+          setLoading(false);
+          return;
+        }
+
+        const applications = await getUserApplications(jwt);
+        const foundApplication = applications.find((app) => app.job.id === job.id);
+        setApplication(foundApplication || null);
+      } catch (error) {
+        console.error("Failed to fetch application:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchApplication();
+  }, [job.id]);
 
   const formatSalary = () => {
     if (!job.minSalary && !job.maxSalary) {
@@ -182,9 +209,40 @@ export function JobDetails({ job }: JobDetailsProps) {
 
       {/* Apply Button */}
       <div className="flex justify-end pt-4">
-        <Button size="lg" className="bg-primary hover:bg-primary/90">
-          Apply Now
-        </Button>
+        {application ? (
+          <Button size="lg" variant="outline" disabled className="bg-gray-100">
+            {application.applicationStatus}
+          </Button>
+        ) : (
+          <Button
+            size="lg"
+            className="bg-primary hover:bg-primary/90"
+            disabled={isApplying || loading}
+            onClick={async () => {
+              const jwt = localStorage.getItem("jwt");
+              if (!jwt) {
+                toast.error("Please login to apply for jobs");
+                return;
+              }
+
+              setIsApplying(true);
+              try {
+                const newApplication = await createApplication(job.id, jwt);
+                setApplication(newApplication);
+                toast.success("Application submitted successfully!");
+              } catch (error) {
+                console.error("Failed to create application:", error);
+                toast.error(
+                  error instanceof Error ? error.message : "Failed to submit application"
+                );
+              } finally {
+                setIsApplying(false);
+              }
+            }}
+          >
+            {isApplying ? "Applying..." : "Apply Now"}
+          </Button>
+        )}
       </div>
     </div>
   );
