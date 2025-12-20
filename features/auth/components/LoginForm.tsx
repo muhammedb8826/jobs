@@ -3,8 +3,11 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { getStrapiURL } from "@/lib/strapi/client";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 function LoginFormContent() {
   const router = useRouter();
@@ -26,8 +29,6 @@ function LoginFormContent() {
 
     if (!password) {
       newErrors.password = "Password is required";
-    } else if (password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
     }
 
     setErrors(newErrors);
@@ -85,7 +86,7 @@ function LoginFormContent() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 rounded-xl border bg-card/60 p-6 shadow-sm">
+    <form onSubmit={handleSubmit} className="w-full max-w-md space-y-6 rounded-lg border bg-card p-6 shadow-sm">
       {/* Inline error message */}
       {errors.submit && (
         <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -93,81 +94,98 @@ function LoginFormContent() {
           <p className="mt-1">{errors.submit}</p>
         </div>
       )}
-        <div className="space-y-1">
-          <label htmlFor="email" className="block text-sm font-medium">
-            Email Address <span className="text-destructive">*</span>
-          </label>
-          <input
+
+      {/* Email Field */}
+      <div className="space-y-2">
+        <Label htmlFor="email" className="text-sm font-medium">
+          Email Address
+        </Label>
+        <div className="relative">
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <Input
             id="email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            placeholder="you@example.com"
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (errors.email) {
+                setErrors((prev) => ({ ...prev, email: undefined }));
+              }
+            }}
+            placeholder="Enter your email"
+            className={`pl-10 ${errors.email ? "border-destructive" : ""}`}
             autoComplete="email"
           />
-          {errors.email && (
-            <p className="mt-1 text-xs text-destructive">{errors.email}</p>
-          )}
         </div>
+        {errors.email && (
+          <p className="text-sm text-destructive">{errors.email}</p>
+        )}
+      </div>
 
-        <div className="space-y-1">
-          <label htmlFor="password" className="block text-sm font-medium">
-            Password <span className="text-destructive">*</span>
-          </label>
-          <div className="relative">
-            <input
-              id="password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-md border border-border px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              autoComplete="current-password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-            </button>
-          </div>
-          {errors.password && (
-            <p className="mt-1 text-xs text-destructive">{errors.password}</p>
-          )}
-          <div className="mt-1 flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">
-              Use the same password you used during registration.
-            </p>
-            <Link
-              href="/reset-password"
-              className="text-xs font-medium text-primary hover:text-primary/80 transition-colors ml-2"
-            >
-              Forgot password?
-            </Link>
-          </div>
+      {/* Password Field */}
+      <div className="space-y-2">
+        <Label htmlFor="password" className="text-sm font-medium">
+          Password
+        </Label>
+        <div className="relative">
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <Input
+            id="password"
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (errors.password) {
+                setErrors((prev) => ({ ...prev, password: undefined }));
+              }
+            }}
+            placeholder="Enter your password"
+            className={`pl-10 pr-10 ${errors.password ? "border-destructive" : ""}`}
+            autoComplete="current-password"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label={showPassword ? "Hide password" : "Show password"}
+          >
+            {showPassword ? (
+              <EyeOff className="h-5 w-5" />
+            ) : (
+              <Eye className="h-5 w-5" />
+            )}
+          </button>
         </div>
+        {errors.password && (
+          <p className="text-sm text-destructive">{errors.password}</p>
+        )}
+        <div className="flex justify-end">
+          <Link
+            href="/reset-password"
+            className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+          >
+            Forgot password?
+          </Link>
+        </div>
+      </div>
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isSubmitting ? "Logging in..." : "Login"}
-        </button>
-      </form>
+      {/* Sign In Button */}
+      <Button
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full"
+        size="lg"
+      >
+        {isSubmitting ? "Signing in..." : "Sign In"}
+      </Button>
+    </form>
   );
 }
 
 export function LoginForm() {
   return (
     <Suspense fallback={
-      <div className="space-y-6 rounded-xl border bg-card/60 p-6 shadow-sm">
+      <div className="w-full max-w-md space-y-6 rounded-lg border bg-card p-6 shadow-sm">
         <div className="h-10 w-full animate-pulse rounded-md bg-muted" />
         <div className="h-10 w-full animate-pulse rounded-md bg-muted" />
         <div className="h-10 w-full animate-pulse rounded-md bg-muted" />

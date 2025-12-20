@@ -6,10 +6,10 @@ export default function LoginPage() {
     <div className="w-full max-w-md px-4">
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          Welcome back
+          Welcome Back
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Sign in with the email and password you used during registration.
+          Sign in to your JobPortal account
         </p>
       </div>
 
@@ -22,7 +22,7 @@ export default function LoginPage() {
             href="/register"
             className="font-medium text-primary hover:text-primary/80 transition-colors"
           >
-            Register here
+            Create one here
           </Link>
         </p>
       </div>
