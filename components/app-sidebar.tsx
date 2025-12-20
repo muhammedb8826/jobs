@@ -51,7 +51,7 @@ const jobseekerNavItems = [
   },
   {
     title: "Find Jobs",
-    url: "/jobs",
+    url: "/dashboard/jobs/find",
     icon: IconListDetails,
   },
   {
