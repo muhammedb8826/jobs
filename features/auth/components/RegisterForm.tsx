@@ -124,28 +124,57 @@ export function RegisterForm() {
       // First, upload the profile image if provided
       let profileImageId: number | null = null;
       if (formData.profileImage) {
-        const imageFormData = new FormData();
-        imageFormData.append("files", formData.profileImage);
+        try {
+          const imageFormData = new FormData();
+          imageFormData.append("files", formData.profileImage);
 
-        const uploadResponse = await fetch(`${getStrapiURL()}/api/upload`, {
-          method: "POST",
-          body: imageFormData,
-        });
+          const uploadResponse = await fetch(`${getStrapiURL()}/api/upload`, {
+            method: "POST",
+            body: imageFormData,
+          });
 
-        if (uploadResponse.ok) {
-          const uploadedFiles = await uploadResponse.json();
-          if (uploadedFiles && uploadedFiles.length > 0) {
-            profileImageId = uploadedFiles[0].id;
+          if (!uploadResponse.ok) {
+            const uploadError = await uploadResponse.json().catch(() => ({}));
+            console.error("Image upload failed:", uploadError);
+            throw new Error(uploadError.error?.message || "Failed to upload profile image");
           }
+
+          const uploadedFiles = await uploadResponse.json();
+          if (uploadedFiles && uploadedFiles.length > 0 && uploadedFiles[0].id) {
+            profileImageId = uploadedFiles[0].id;
+            console.log("Profile image uploaded successfully, ID:", profileImageId);
+          } else {
+            console.warn("Upload response did not contain file ID:", uploadedFiles);
+          }
+        } catch (uploadError) {
+          console.error("Error uploading profile image:", uploadError);
+          // Continue with registration even if image upload fails
+          // You can choose to throw here if image is required
         }
       }
 
-      // Step 1: Register the user with native Strapi endpoint (basic fields only)
-      const registerData = {
+      // Register the user with all fields in a single request
+      const registerData: {
+        username: string;
+        email: string;
+        password: string;
+        fullName: string;
+        userType: string;
+        profileImage?: number | { id: number };
+      } = {
         username: formData.email.split("@")[0], // Use email prefix as username
         email: formData.email,
         password: formData.password,
+        fullName: formData.fullName,
+        userType: formData.userType,
       };
+
+      if (profileImageId) {
+        // Strapi media fields typically expect an object with id property
+        registerData.profileImage = { id: profileImageId };
+      }
+
+      console.log("Registering user with data:", { ...registerData, password: "***" });
 
       const registerResponse = await fetch(`${getStrapiURL()}/api/auth/local/register`, {
         method: "POST",
@@ -158,42 +187,11 @@ export function RegisterForm() {
       const registerResult = await registerResponse.json();
 
       if (!registerResponse.ok) {
+        console.error("Registration failed:", registerResult);
         throw new Error(registerResult.error?.message || registerResult.error || "Registration failed");
       }
 
-      // Step 2: Update user profile with custom fields using the JWT token
-      const jwt = registerResult.jwt;
-      const userId = registerResult.user?.id;
-
-      if (userId && jwt) {
-        const updateData: {
-          fullName: string;
-          userType: string;
-          profileImage?: number;
-        } = {
-          fullName: formData.fullName,
-          userType: formData.userType,
-        };
-
-        if (profileImageId) {
-          updateData.profileImage = profileImageId;
-        }
-
-        const updateResponse = await fetch(`${getStrapiURL()}/api/users/${userId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${jwt}`,
-          },
-          body: JSON.stringify({ data: updateData }),
-        });
-
-        if (!updateResponse.ok) {
-          const updateResult = await updateResponse.json();
-          console.warn("Failed to update user profile:", updateResult);
-          // Continue anyway - user is registered, profile update can be done later
-        }
-      }
+      console.log("Registration successful:", registerResult);
 
       // Success - redirect to login or show success message
       window.location.href = "/login?registered=true";
