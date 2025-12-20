@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
+import { getStrapiURL } from "@/lib/strapi/client";
 
 function LoginFormContent() {
   const router = useRouter();
@@ -46,18 +47,27 @@ function LoginFormContent() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/login", {
+      // Login with Strapi - use identifier (email) and password
+      const response = await fetch(`${getStrapiURL()}/api/auth/local`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          identifier: email, // Strapi uses 'identifier' which can be email or username
+          password: password,
+        }),
       });
 
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(result.error || "Login failed");
+        throw new Error(result.error?.message || result.error || "Login failed");
+      }
+
+      // Store the JWT token in localStorage or cookies for future requests
+      if (result.jwt) {
+        localStorage.setItem("jwt", result.jwt);
       }
 
       // Redirect to dashboard or the redirect URL if provided

@@ -176,7 +176,7 @@ export function Footer({ data, siteName, siteDescription }: FooterProps) {
           </button>
         </div>
         <div className="mt-6 border-t border-white/10 pt-6 text-center text-sm text-white/60">
-          {data.copyRight || "© DADU Alumni. All rights reserved."}
+          {data.copyRight || "© Job Portal. All rights reserved."}
         </div>
       </div>
     </footer>

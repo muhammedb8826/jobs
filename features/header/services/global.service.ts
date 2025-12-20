@@ -15,7 +15,7 @@ export const EMPTY_GLOBAL_DATA: GlobalData = {
     navigationLinks: [],
   },
   footer: {
-    copyRight: "© DADU Alumni. All rights reserved.",
+    copyRight: "© Job Portal. All rights reserved.",
     about: undefined,
     quickLinks: {
       title: undefined,
@@ -152,7 +152,7 @@ export async function fetchGlobalData(): Promise<GlobalData> {
         })) || [],
     },
     footer: {
-      copyRight: data.footer?.copyRight || "© DADU Alumni. All rights reserved.",
+      copyRight: data.footer?.copyRight || "© Job Portal. All rights reserved.",
       about: data.footer?.about
         ? {
             title: data.footer.about.title || undefined,

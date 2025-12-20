@@ -51,10 +51,10 @@ export function JobPortalHeader() {
               Login
             </Link>
             <Link
-              href="/signup"
+              href="/register"
               className="text-sm font-medium text-primary-foreground bg-primary hover:opacity-90 transition-opacity px-5 py-2 rounded-lg"
             >
-              Sign Up
+              Register
             </Link>
           </div>
         </div>
