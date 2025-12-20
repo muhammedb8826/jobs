@@ -5,7 +5,7 @@ import Link from "next/link";
 import { IconPlus } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { JobsTable } from "@/components/shared/jobs-table";
-import { getJobs, type Job } from "@/features/jobs/api/jobs.api";
+import { deleteJob, getJobs, type Job } from "@/features/jobs/api/jobs.api";
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -30,6 +30,25 @@ export default function JobsPage() {
 
     fetchJobs();
   }, []);
+
+  const handleDelete = async (jobId: number) => {
+    const jwt = localStorage.getItem("jwt");
+    if (!jwt) {
+      throw new Error("You must be logged in to delete a job");
+    }
+    
+    try {
+      await deleteJob(jobId, jwt);
+      // Refresh jobs list - filter out the deleted job immediately for better UX
+      setJobs(prevJobs => prevJobs.filter(job => job.id !== jobId));
+      // Then fetch fresh data from server to ensure consistency
+      const updatedJobs = await getJobs(jwt);
+      setJobs(updatedJobs);
+    } catch (error) {
+      console.error("Delete error:", error);
+      throw error;
+    }
+  };
 
   if (loading) {
     return (
@@ -70,7 +89,7 @@ export default function JobsPage() {
             </Link>
           </Button>
         </div>
-        <JobsTable jobs={jobs} />
+        <JobsTable jobs={jobs} onDelete={handleDelete} />
       </div>
     </div>
   );

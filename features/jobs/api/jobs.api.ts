@@ -49,3 +49,20 @@ export async function getJobs(jwt?: string): Promise<Job[]> {
   }
 }
 
+export async function deleteJob(jobId: number, jwt: string): Promise<void> {
+  const response = await fetch(`${getStrapiURL()}/api/jobs/${jobId}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${jwt}`,
+    },
+  });
+
+  // 204 No Content and 200 OK are valid success responses for DELETE
+  // response.ok is true for 200-299 status codes, so 204 is already handled
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error?.message || `Failed to delete job: ${response.status}`);
+  }
+}
+

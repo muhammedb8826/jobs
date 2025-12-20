@@ -54,6 +54,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 import type { Job } from "@/features/jobs/api/jobs.api";
 
 // Schema for job table data
@@ -131,32 +140,51 @@ const columns: ColumnDef<JobTableData>[] = [
   },
   {
     id: "actions",
-    cell: () => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
-            size="icon"
-          >
-            <IconDotsVertical />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-32">
-          <DropdownMenuItem>Edit</DropdownMenuItem>
-          <DropdownMenuItem>View Applicants</DropdownMenuItem>
-          <DropdownMenuItem>Duplicate</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as { onDelete?: (jobId: number) => void };
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
+              size="icon"
+            >
+              <IconDotsVertical />
+              <span className="sr-only">Open menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-32">
+            <DropdownMenuItem>Edit</DropdownMenuItem>
+            <DropdownMenuItem>View Applicants</DropdownMenuItem>
+            <DropdownMenuItem>Duplicate</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (meta?.onDelete) {
+                  meta.onDelete(row.original.id);
+                }
+              }}
+            >
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    },
   },
 ];
 
 
-export function JobsTable({ jobs }: { jobs: Job[] }) {
+export function JobsTable({ 
+  jobs, 
+  onDelete 
+}: { 
+  jobs: Job[];
+  onDelete?: (jobId: number) => Promise<void>;
+}) {
   const data = React.useMemo(() => jobs.map(jobToTableData), [jobs]);
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -169,6 +197,33 @@ export function JobsTable({ jobs }: { jobs: Job[] }) {
     pageIndex: 0,
     pageSize: 10,
   });
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [jobToDelete, setJobToDelete] = React.useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
+  const handleDeleteClick = (jobId: number) => {
+    setJobToDelete(jobId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!jobToDelete || !onDelete) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await onDelete(jobToDelete);
+      toast.success("Job deleted successfully");
+      setDeleteDialogOpen(false);
+      setJobToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete job:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to delete job");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const table = useReactTable({
     data,
@@ -179,6 +234,9 @@ export function JobsTable({ jobs }: { jobs: Job[] }) {
       columnFilters,
       globalFilter,
       pagination,
+    },
+    meta: {
+      onDelete: handleDeleteClick,
     },
     getRowId: (row) => row.id.toString(),
     onSortingChange: setSorting,
@@ -193,6 +251,8 @@ export function JobsTable({ jobs }: { jobs: Job[] }) {
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     globalFilterFn: "includesString",
+    // Force table to update when data changes
+    manualPagination: false,
   });
 
   return (
@@ -398,6 +458,35 @@ export function JobsTable({ jobs }: { jobs: Job[] }) {
           </div>
         </div>
       </div>
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Job</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this job? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setJobToDelete(null);
+              }}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
