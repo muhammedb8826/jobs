@@ -138,3 +138,40 @@ export async function getUserApplications(jwt: string): Promise<Application[]> {
   }
 }
 
+export async function getEmployerApplications(jwt: string): Promise<Application[]> {
+  try {
+    // Fetch all applications with populated job and user data
+    // Note: In a production app, you'd want to filter by jobs owned by the employer
+    // For now, we'll fetch all and could filter client-side, or implement server-side filtering
+    // Use simpler populate syntax - avoid nested relations that cause validation errors
+    // Only populate job and user, not job.category
+    const response = await fetch(
+      `${getStrapiURL()}/api/applications?populate=job&populate=users_permissions_user`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        next: { revalidate: 0 },
+      }
+    );
+
+    if (!response.ok) {
+      if (response.status === 403) {
+        console.error(
+          "Permission denied. Please enable 'find' permission for Application content type in Strapi. " +
+          "Go to Settings > Users & Permissions Plugin > Roles > Authenticated > Application > enable 'find' permission."
+        );
+        return [];
+      }
+      throw new Error(`Failed to fetch applications: ${response.status}`);
+    }
+
+    const data: StrapiApplicationResponse = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error("Failed to fetch employer applications:", error);
+    return [];
+  }
+}
+
