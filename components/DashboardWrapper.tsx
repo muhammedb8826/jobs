@@ -61,11 +61,41 @@ export function DashboardWrapper() {
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <SectionCards />
-              <div className="px-4 lg:px-6">
-                <ChartAreaInteractive />
-              </div>
-              <DataTable data={data} />
+              {user.userType === "employer" ? (
+                <>
+                  {/* Employer Dashboard Content */}
+                  <div className="px-4 lg:px-6">
+                    <div className="rounded-lg border bg-card p-6">
+                      <h2 className="text-2xl font-bold mb-4">Employer Dashboard</h2>
+                      <p className="text-muted-foreground">
+                        Manage your job postings, view applications, and find the best candidates.
+                      </p>
+                    </div>
+                  </div>
+                  <SectionCards />
+                  <div className="px-4 lg:px-6">
+                    <ChartAreaInteractive />
+                  </div>
+                  <DataTable data={data} />
+                </>
+              ) : (
+                <>
+                  {/* Jobseeker Dashboard Content */}
+                  <div className="px-4 lg:px-6">
+                    <div className="rounded-lg border bg-card p-6">
+                      <h2 className="text-2xl font-bold mb-4">Job Seeker Dashboard</h2>
+                      <p className="text-muted-foreground">
+                        Find your next opportunity, track your applications, and manage your job search.
+                      </p>
+                    </div>
+                  </div>
+                  <SectionCards />
+                  <div className="px-4 lg:px-6">
+                    <ChartAreaInteractive />
+                  </div>
+                  <DataTable data={data} />
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -1,9 +1,9 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import {
   IconCamera,
-  IconChartBar,
   IconDashboard,
   IconDatabase,
   IconFileAi,
@@ -16,8 +16,10 @@ import {
   IconReport,
   IconSearch,
   IconSettings,
-  IconUsers,
   IconUserCircle,
+  IconBriefcase,
+  IconPlus,
+  IconUserCheck,
 } from "@tabler/icons-react"
 
 import { NavDocuments } from "@/components/nav-documents"
@@ -35,34 +37,71 @@ import {
 } from "@/components/ui/sidebar"
 import { User } from "@/lib/auth/user"
 
+// Navigation items for jobseekers
+const jobseekerNavItems = [
+  {
+    title: "Dashboard",
+    url: "/dashboard",
+    icon: IconDashboard,
+  },
+  {
+    title: "My Profile",
+    url: "/dashboard/profile",
+    icon: IconUserCircle,
+  },
+  {
+    title: "Find Jobs",
+    url: "/jobs",
+    icon: IconListDetails,
+  },
+  {
+    title: "My Applications",
+    url: "/dashboard/applications",
+    icon: IconFileDescription,
+  },
+  {
+    title: "Saved Jobs",
+    url: "/dashboard/saved",
+    icon: IconFolder,
+  },
+];
+
+// Navigation items for employers
+const employerNavItems = [
+  {
+    title: "Dashboard",
+    url: "/dashboard",
+    icon: IconDashboard,
+  },
+  {
+    title: "My Profile",
+    url: "/dashboard/profile",
+    icon: IconUserCircle,
+  },
+  {
+    title: "Post a Job",
+    url: "/dashboard/jobs/post",
+    icon: IconPlus,
+  },
+  {
+    title: "Manage Jobs",
+    url: "/dashboard/jobs",
+    icon: IconBriefcase,
+  },
+  {
+    title: "Applications",
+    url: "/dashboard/applications",
+    icon: IconFileDescription,
+  },
+  {
+    title: "Candidates",
+    url: "/dashboard/candidates",
+    icon: IconUserCheck,
+  },
+];
+
 const data = {
-  navMain: [
-    {
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: IconDashboard,
-    },
-    {
-      title: "My Profile",
-      url: "/dashboard/profile",
-      icon: IconUserCircle,
-    },
-    {
-      title: "Jobs",
-      url: "/jobs",
-      icon: IconListDetails,
-    },
-    {
-      title: "Applications",
-      url: "/dashboard/applications",
-      icon: IconFileDescription,
-    },
-    {
-      title: "Saved Jobs",
-      url: "/dashboard/saved",
-      icon: IconFolder,
-    },
-  ],
+  navMain: jobseekerNavItems, // Default, will be overridden based on user type
   navClouds: [
     {
       title: "Capture",
@@ -160,18 +199,24 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
+              className="data-[slot=sidebar-menu-button]:p-1.5!"
             >
-              <a href="/">
-                <IconInnerShadowTop className="!size-5" />
+              <Link href="/">
+                <IconInnerShadowTop className="size-5!" />
                 <span className="text-base font-semibold">JobPortal</span>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain 
+          items={
+            user?.userType === "employer" 
+              ? employerNavItems 
+              : jobseekerNavItems
+          } 
+        />
         <NavDocuments items={data.documents} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
