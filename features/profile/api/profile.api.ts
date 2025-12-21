@@ -17,6 +17,7 @@ export async function updateUserProfile(
     fullName?: string;
     email?: string;
     profileImage?: number | { id: number } | null;
+    resume?: number | { id: number } | null;
     company?: number;
   },
   jwt: string
@@ -28,6 +29,10 @@ export async function updateUserProfile(
   if (data.profileImage !== undefined && data.profileImage !== null) {
     // Use same format as registration: { id: number }
     payload.profileImage = data.profileImage;
+  }
+  if (data.resume !== undefined && data.resume !== null) {
+    // Resume file reference
+    payload.resume = data.resume;
   }
   if (data.company !== undefined && data.company !== null) {
     // Company relation should be sent as just the ID number
@@ -110,30 +115,79 @@ export async function createCompany(
 }
 
 export async function uploadFile(file: File, jwt?: string): Promise<number> {
+  // Validate file before upload
+  if (!file || file.size === 0) {
+    throw new Error("Invalid file: File is empty or not provided");
+  }
+
+  // Check file size (limit to 10MB as a reasonable default)
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  if (file.size > maxSize) {
+    throw new Error(`File is too large. Maximum size is ${maxSize / 1024 / 1024}MB`);
+  }
+
   const formData = new FormData();
   formData.append("files", file);
 
   const headers: HeadersInit = {};
+  // Don't set Content-Type header - let browser set it with boundary for multipart/form-data
   if (jwt) {
     headers["Authorization"] = `Bearer ${jwt}`;
   }
 
-  const response = await fetch(`${getStrapiURL()}/api/upload`, {
-    method: "POST",
-    headers,
-    body: formData,
-  });
+  try {
+    console.log("Uploading file:", {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error?.message || "Failed to upload file");
+    const response = await fetch(`${getStrapiURL()}/api/upload`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let error;
+      try {
+        error = JSON.parse(errorText);
+      } catch {
+        error = { error: { message: errorText || `Failed to upload file: ${response.status}` } };
+      }
+      const errorMessage = error.error?.message || error.message || `Failed to upload file: ${response.status}`;
+      console.error("Upload error:", {
+        status: response.status,
+        statusText: response.statusText,
+        errorMessage,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        fullError: error,
+      });
+      
+      if (response.status === 500) {
+        throw new Error(
+          `Server error during upload. Please check: 1) File size (max 10MB), 2) File type is supported, 3) Strapi server logs for details. Original error: ${errorMessage}`
+        );
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const uploadedFiles = await response.json();
+    if (!uploadedFiles || !uploadedFiles[0] || !uploadedFiles[0].id) {
+      throw new Error("Upload response did not contain file ID");
+    }
+
+    return uploadedFiles[0].id;
+  } catch (error) {
+    console.error("File upload failed:", error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("Failed to upload file: Unknown error");
   }
-
-  const uploadedFiles = await response.json();
-  if (!uploadedFiles || !uploadedFiles[0] || !uploadedFiles[0].id) {
-    throw new Error("Upload response did not contain file ID");
-  }
-
-  return uploadedFiles[0].id;
 }
 

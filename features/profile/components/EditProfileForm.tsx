@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { IconBuilding, IconUser, IconX } from "@tabler/icons-react";
+import { IconBuilding, IconUser, IconX, IconFileText } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ type EditProfileFormData = {
   fullName: string;
   email: string;
   profileImage: File | null;
+  resume: File | null;
   companyName: string;
   companyDescription: string;
   companyLogo: File | null;
@@ -26,6 +27,7 @@ export function EditProfileForm({ user, onUpdate }: { user: User; onUpdate?: () 
     fullName: user.fullName || "",
     email: user.email || "",
     profileImage: null,
+    resume: null,
     companyName: user.company?.name || "",
     companyDescription: user.company?.description || "",
     companyLogo: null,
@@ -33,9 +35,11 @@ export function EditProfileForm({ user, onUpdate }: { user: User; onUpdate?: () 
 
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
   const [companyLogoPreview, setCompanyLogoPreview] = useState<string | null>(null);
+  const [resumePreview, setResumePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const profileImageInputRef = useRef<HTMLInputElement>(null);
   const companyLogoInputRef = useRef<HTMLInputElement>(null);
+  const resumeInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize previews from user data when user changes
   useEffect(() => {
@@ -55,6 +59,14 @@ export function EditProfileForm({ user, onUpdate }: { user: User; onUpdate?: () 
       if (imageUrl && !formData.companyLogo) {
         setCompanyLogoPreview(imageUrl);
       }
+    }
+
+    // Set resume preview from user data
+    if (user.resume?.url && !formData.resume) {
+      const baseUrl = getStrapiURL();
+      // Ensure no double slashes in URL
+      const resumeUrl = `${baseUrl.replace(/\/$/, "")}${user.resume.url}`;
+      setResumePreview(resumeUrl);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -98,6 +110,24 @@ export function EditProfileForm({ user, onUpdate }: { user: User; onUpdate?: () 
     }
   };
 
+  const handleResumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFormData((prev) => ({ ...prev, resume: file }));
+      setResumePreview(file.name);
+    } else {
+      // Reset preview if no file selected - restore user's existing resume
+      if (user.resume?.url) {
+        const baseUrl = getStrapiURL();
+        // Ensure no double slashes in URL
+        const resumeUrl = `${baseUrl.replace(/\/$/, "")}${user.resume.url}`;
+        setResumePreview(resumeUrl);
+      } else {
+        setResumePreview(null);
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -120,11 +150,18 @@ export function EditProfileForm({ user, onUpdate }: { user: User; onUpdate?: () 
         companyLogoId = await uploadFile(formData.companyLogo, jwt);
       }
 
+      // Upload resume if changed (only for jobseekers)
+      let resumeId: number | undefined;
+      if (formData.resume && user.userType === "jobseeker") {
+        resumeId = await uploadFile(formData.resume, jwt);
+      }
+
       // Update user profile
       const updateData: {
         fullName: string;
         email: string;
         profileImage?: { id: number };
+        resume?: { id: number };
       } = {
         fullName: formData.fullName,
         email: formData.email,
@@ -132,6 +169,10 @@ export function EditProfileForm({ user, onUpdate }: { user: User; onUpdate?: () 
       
       if (profileImageId) {
         updateData.profileImage = { id: profileImageId };
+      }
+
+      if (resumeId) {
+        updateData.resume = { id: resumeId };
       }
 
       await updateUserProfile(user.id, updateData, jwt);
@@ -171,12 +212,16 @@ export function EditProfileForm({ user, onUpdate }: { user: User; onUpdate?: () 
       setFormData((prev) => ({
         ...prev,
         profileImage: null,
+        resume: null,
         companyLogo: null,
       }));
       
       // Reset file input refs
       if (profileImageInputRef.current) {
         profileImageInputRef.current.value = "";
+      }
+      if (resumeInputRef.current) {
+        resumeInputRef.current.value = "";
       }
       if (companyLogoInputRef.current) {
         companyLogoInputRef.current.value = "";
@@ -281,6 +326,58 @@ export function EditProfileForm({ user, onUpdate }: { user: User; onUpdate?: () 
                   required
                 />
               </div>
+
+              {/* Resume Upload - Only for jobseekers */}
+              {user.userType === "jobseeker" && (
+                <div className="space-y-3">
+                  <Label>Resume</Label>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-center w-16 h-16 rounded-lg border-2 border-border bg-muted">
+                      <IconFileText className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        ref={resumeInputRef}
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={handleResumeChange}
+                        className="hidden"
+                      />
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => resumeInputRef.current?.click()}
+                          className="bg-purple-500 hover:bg-purple-600 text-white border-0"
+                        >
+                          Choose file
+                        </Button>
+                        {resumePreview && !formData.resume && user.resume?.url && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              if (resumePreview) {
+                                window.open(resumePreview, "_blank", "noopener,noreferrer");
+                              }
+                            }}
+                            className="bg-blue-500 hover:bg-blue-600 text-white border-0"
+                          >
+                            Preview Resume
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {formData.resume 
+                          ? formData.resume.name 
+                          : resumePreview 
+                          ? (user.resume?.name || "Resume uploaded")
+                          : "No file chosen"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Company Information - Only show for employers */}

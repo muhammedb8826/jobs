@@ -13,6 +13,11 @@ export type User = {
     url: string;
     formats?: Record<string, { url: string }>;
   } | null;
+  resume?: {
+    id: number;
+    url: string;
+    name?: string;
+  } | null;
   company?: {
     id: number;
     name: string;
@@ -38,6 +43,7 @@ export async function getCurrentUser(): Promise<User | null> {
     // Use correct Strapi v4 populate syntax for nested relations
     const populateParams = new URLSearchParams({
       "populate[profileImage]": "*",
+      "populate[resume]": "*",
       "populate[company][populate][logo]": "*",
     });
     const response = await fetch(`${getStrapiURL()}/api/users/me?${populateParams.toString()}`, {
