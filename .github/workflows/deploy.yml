@@ -19,7 +19,7 @@ jobs:
         node-version: 22.18.0
 
     - name: Install dependencies
-      run: npm install
+      run: npm install --os=linux --os=win32 --cpu=x64
 
     - name: Create env file for build
       run: |
